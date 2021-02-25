@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -23,6 +25,7 @@ import (
 	"github.com/cli/cli/pkg/cmdutil"
 	"github.com/cli/cli/pkg/iostreams"
 	"github.com/cli/cli/pkg/jsoncolor"
+	"github.com/mgutz/ansi"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +43,7 @@ type ApiOptions struct {
 	ShowResponseHeaders bool
 	Paginate            bool
 	Silent              bool
+	Template            string
 	CacheTTL            time.Duration
 
 	HttpClient func() (*http.Client, error)
@@ -189,6 +193,7 @@ func NewCmdApi(f *cmdutil.Factory, runF func(*ApiOptions) error) *cobra.Command 
 	cmd.Flags().BoolVar(&opts.Paginate, "paginate", false, "Make additional HTTP requests to fetch all pages of results")
 	cmd.Flags().StringVar(&opts.RequestInputFile, "input", "", "The `file` to use as body for the HTTP request")
 	cmd.Flags().BoolVar(&opts.Silent, "silent", false, "Do not print the response body")
+	cmd.Flags().StringVarP(&opts.Template, "format", "t", "", "Format the response using a Go template")
 	cmd.Flags().StringVar(&cacheDuration, "cache", "", "Cache the response for the specified duration")
 	return cmd
 }
@@ -316,7 +321,50 @@ func processResponse(resp *http.Response, opts *ApiOptions, headersOutputStream 
 		responseBody = io.TeeReader(responseBody, bodyCopy)
 	}
 
-	if isJSON && opts.IO.ColorEnabled() {
+	if opts.Template != "" {
+		templateFuncs := map[string]interface{}{
+			"color": func(colorName string, input interface{}) (string, error) {
+				var text string
+				switch tt := input.(type) {
+				case string:
+					text = tt
+				case float64:
+					if math.Trunc(tt) == tt {
+						text = strconv.FormatFloat(tt, 'f', 0, 64)
+					} else {
+						text = strconv.FormatFloat(tt, 'f', 2, 64)
+					}
+				case nil:
+					text = ""
+				case bool:
+					text = fmt.Sprintf("%v", tt)
+				default:
+					return "", fmt.Errorf("cannot convert type to string: %v", tt)
+				}
+				return ansi.Color(text, colorName), nil
+			},
+		}
+
+		// TODO: reuse parsed template across pagination invocations
+		t := template.Must(template.New("").Funcs(templateFuncs).Parse(opts.Template))
+
+		var jsonData []byte
+		jsonData, err = ioutil.ReadAll(responseBody)
+		if err != nil {
+			return
+		}
+
+		var m interface{}
+		err = json.Unmarshal(jsonData, &m)
+		if err != nil {
+			return
+		}
+
+		err = t.Execute(opts.IO.Out, m)
+		if err != nil {
+			return
+		}
+	} else if isJSON && opts.IO.ColorEnabled() {
 		err = jsoncolor.Write(opts.IO.Out, responseBody, "  ")
 	} else {
 		_, err = io.Copy(opts.IO.Out, responseBody)
