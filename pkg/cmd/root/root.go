@@ -7,6 +7,7 @@ import (
 	"github.com/cli/cli/api"
 	"github.com/cli/cli/context"
 	"github.com/cli/cli/internal/ghrepo"
+	actionsCmd "github.com/cli/cli/pkg/cmd/actions"
 	aliasCmd "github.com/cli/cli/pkg/cmd/alias"
 	apiCmd "github.com/cli/cli/pkg/cmd/api"
 	authCmd "github.com/cli/cli/pkg/cmd/auth"
@@ -19,6 +20,7 @@ import (
 	releaseCmd "github.com/cli/cli/pkg/cmd/release"
 	repoCmd "github.com/cli/cli/pkg/cmd/repo"
 	creditsCmd "github.com/cli/cli/pkg/cmd/repo/credits"
+	runCmd "github.com/cli/cli/pkg/cmd/run"
 	secretCmd "github.com/cli/cli/pkg/cmd/secret"
 	sshKeyCmd "github.com/cli/cli/pkg/cmd/ssh-key"
 	versionCmd "github.com/cli/cli/pkg/cmd/version"
@@ -79,6 +81,9 @@ func NewCmdRoot(f *cmdutil.Factory, version, buildDate string) *cobra.Command {
 	cmd.AddCommand(completionCmd.NewCmdCompletion(f.IOStreams))
 	cmd.AddCommand(secretCmd.NewCmdSecret(f))
 	cmd.AddCommand(sshKeyCmd.NewCmdSSHKey(f))
+
+	cmd.AddCommand(actionsCmd.NewCmdActions(f))
+	cmd.AddCommand(runCmd.NewCmdRun(f))
 
 	// the `api` command should not inherit any extra HTTP headers
 	bareHTTPCmdFactory := *f
