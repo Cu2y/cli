@@ -10,11 +10,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmdAuth(f *cmdutil.Factory) *cobra.Command {
+
 	cmd := &cobra.Command{
 		Use:   "auth <command>",
 		Short: "Login, logout, and refresh your authentication",
-		Long:  `Manage gh's authentication state.`,
+		Long:  `Manage go's authentication state.`,
 	}
 
 	cmdutil.DisableAuthCheck(cmd)
