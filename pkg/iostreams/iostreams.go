@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/cli/safeexec"
 	"github.com/google/shlex"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
@@ -45,8 +44,6 @@ type IOStreams struct {
 	pagerProcess *os.Process
 
 	neverPrompt bool
-
-	TempFileOverride *os.File
 }
 
 func (s *IOStreams) ColorEnabled() bool {
@@ -163,11 +160,7 @@ func (s *IOStreams) StartPager() error {
 		pagerEnv = append(pagerEnv, "LV=-c")
 	}
 
-	pagerExe, err := safeexec.LookPath(pagerArgs[0])
-	if err != nil {
-		return err
-	}
-	pagerCmd := exec.Command(pagerExe, pagerArgs[1:]...)
+	pagerCmd := exec.Command(pagerArgs[0], pagerArgs[1:]...)
 	pagerCmd.Env = pagerEnv
 	pagerCmd.Stdout = s.Out
 	pagerCmd.Stderr = s.ErrOut
@@ -235,11 +228,7 @@ func (s *IOStreams) TerminalWidth() int {
 	}
 
 	if isCygwinTerminal(out) {
-		tputExe, err := safeexec.LookPath("tput")
-		if err != nil {
-			return defaultWidth
-		}
-		tputCmd := exec.Command(tputExe, "cols")
+		tputCmd := exec.Command("tput", "cols")
 		tputCmd.Stdin = os.Stdin
 		if out, err := tputCmd.Output(); err == nil {
 			if w, err := strconv.Atoi(strings.TrimSpace(string(out))); err == nil {
@@ -268,13 +257,6 @@ func (s *IOStreams) ReadUserFile(fn string) ([]byte, error) {
 	}
 	defer r.Close()
 	return ioutil.ReadAll(r)
-}
-
-func (s *IOStreams) TempFile(dir, pattern string) (*os.File, error) {
-	if s.TempFileOverride != nil {
-		return s.TempFileOverride, nil
-	}
-	return ioutil.TempFile(dir, pattern)
 }
 
 func System() *IOStreams {
