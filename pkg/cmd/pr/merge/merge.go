@@ -157,8 +157,9 @@ func mergeRun(opts *MergeOptions) error {
 		return nil
 	}
 
-	if opts.SelectorArg == "" && len(pr.Commits.Nodes) > 0 {
-		if localBranchLastCommit, err := git.LastCommit(); err == nil {
+	if opts.SelectorArg == "" {
+		localBranchLastCommit, err := git.LastCommit()
+		if err == nil {
 			if localBranchLastCommit.Sha != pr.Commits.Nodes[0].Commit.Oid {
 				fmt.Fprintf(opts.IO.ErrOut,
 					"%s Pull request #%d (%s) has diverged from local branch\n", cs.Yellow("!"), pr.Number, pr.Title)

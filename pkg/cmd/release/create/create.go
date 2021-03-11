@@ -3,6 +3,7 @@ package create
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -105,7 +106,12 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			opts.BodyProvided = cmd.Flags().Changed("notes")
 			if notesFile != "" {
-				b, err := cmdutil.ReadFile(notesFile, opts.IO.In)
+				var b []byte
+				if notesFile == "-" {
+					b, err = ioutil.ReadAll(opts.IO.In)
+				} else {
+					b, err = ioutil.ReadFile(notesFile)
+				}
 				if err != nil {
 					return err
 				}
